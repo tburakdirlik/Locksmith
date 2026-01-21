@@ -184,6 +184,12 @@ chmod +x locksmith.py
 - [NetExec Documentation](https://www.netexec.wiki/)
 - [HackTricks](https://book.hacktricks.xyz/)
 
+## 📸 Screenshots
+
+![Locksmith Usage Example 1](https://raw.githubusercontent.com/tburakdirlik/Locksmith/refs/heads/main/ss-1.png)
+
+![Locksmith Usage Example 2](https://raw.githubusercontent.com/tburakdirlik/Locksmith/refs/heads/main/ss-2.png)
+
 ---
 
 **Made for Penetration Testing** 🎓
