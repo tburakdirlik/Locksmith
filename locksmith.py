@@ -48,7 +48,6 @@ def print_banner():
 ╔═══════════════════════════════════════════════════════════╗
 ║                    LOCKSMITH v1.0                         ║
 ║          Multi-Protocol Credential Testing Tool           ║
-║                  OSCP Edition - 2025                      ║
 ╚═══════════════════════════════════════════════════════════╝
 {Colors.ENDC}"""
     print(banner)
