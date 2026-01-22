@@ -3,7 +3,7 @@
 locksmith.py - Multi-Protocol Credential Testing Tool
 Author: Penetration Testing Toolkit
 Purpose: Test username/password credentials across multiple services
-Version: 1.3 (Bug Fixes & Improvements)
+Version: 1.3.1 (Fixed False Positives)
 """
 
 import argparse
@@ -53,7 +53,7 @@ def print_banner():
     banner = f"""
 {Colors.OKCYAN}{Colors.BOLD}
 ╔═══════════════════════════════════════════════════════════╗
-║                    LOCKSMITH v1.3                         ║
+║                    LOCKSMITH v1.3.1                       ║
 ║          Multi-Protocol Credential Testing Tool           ║
 ╚═══════════════════════════════════════════════════════════╝
 {Colors.ENDC}"""
@@ -243,6 +243,7 @@ def test_credential(nxc_cmd: str, target: str, username: str, password: str,
         cmd.extend(['--port', str(port)])
     
     try:
+        # Run command with timeout
         result = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
@@ -253,26 +254,21 @@ def test_credential(nxc_cmd: str, target: str, username: str, password: str,
         
         output = result.stdout + result.stderr
         
+        # Strict success indicators
         success_indicators = [
             '(Pwn3d!)', 'STATUS_SUCCESS', '[+]',
             'Authentication successful', 'Login successful'
         ]
         
-        failure_indicators = [
-            'STATUS_LOGON_FAILURE', 'Authentication failed', 'Login failed',
-            'Connection error', 'NT_STATUS_LOGON_FAILURE', 'NT_STATUS_ACCESS_DENIED',
-            'Invalid credentials', '[-]'
-        ]
-        
+        # Check for strict success
         is_success = any(indicator in output for indicator in success_indicators)
-        is_failure = any(indicator in output for indicator in failure_indicators)
         
-        if is_success and not is_failure:
+        # FIX: Do not rely on result.returncode. NetExec often returns 0 even on connection errors.
+        # Only return True if we explicitly see a success message.
+        if is_success:
             return True, output
-        elif is_failure:
-            return False, output
         else:
-            return (result.returncode == 0), output
+            return False, output
             
     except subprocess.TimeoutExpired:
         return False, "Connection timeout (service may be slow or filtered)"
@@ -319,14 +315,18 @@ def print_test_result(port: int, protocol_name: str, success: bool, output: str,
             print(f"{Colors.OKBLUE}    └─ Example: {Colors.ENDC}{example_cmd}")
     else:
         print(f"{Colors.FAIL}[✗] FAILED{Colors.ENDC}  - Port {Colors.BOLD}{port}{Colors.ENDC} ({protocol_name})")
-        if "timeout" in output.lower():
+        # Check for various failure types in output
+        lower_out = output.lower()
+        if "timeout" in lower_out or "timed out" in lower_out:
             print(f"{Colors.WARNING}    └─ Connection timeout{Colors.ENDC}")
-        elif "connection" in output.lower() or "refused" in output.lower():
-            print(f"{Colors.WARNING}    └─ Connection error (port may be filtered/closed){Colors.ENDC}")
-        elif "logon_failure" in output.lower() or "invalid credentials" in output.lower():
+        elif "connection" in lower_out and ("refused" in lower_out or "error" in lower_out):
+            print(f"{Colors.WARNING}    └─ Connection refused/error (port may be closed){Colors.ENDC}")
+        elif "logon_failure" in lower_out or "invalid credentials" in lower_out or "access_denied" in lower_out:
             print(f"{Colors.WARNING}    └─ Invalid credentials{Colors.ENDC}")
-        elif "expect" in output.lower() and "not found" in output.lower():
+        elif "expect" in lower_out and "not found" in lower_out:
             print(f"{Colors.WARNING}    └─ {output}{Colors.ENDC}")
+        elif "no route to host" in lower_out:
+            print(f"{Colors.WARNING}    └─ No route to host (Network unreachable){Colors.ENDC}")
 
 def main():
     parser = argparse.ArgumentParser(
