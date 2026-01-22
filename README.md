@@ -190,8 +190,10 @@ chmod +x locksmith.py
 
 ![Locksmith Usage Example 2](https://raw.githubusercontent.com/tburakdirlik/Locksmith/refs/heads/main/ss-2.png)
 
----
+## Next Updates
 
-** Next updates: Anonymous Login - Guest Access - Default Credentials** 
+Anonymous Login - Guest Access - Default Credentials
+
+---
 
 **Made for Penetration Testing** 🎓
