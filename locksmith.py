@@ -3,7 +3,7 @@
 locksmith.py - Multi-Protocol Credential Testing Tool
 Author: Penetration Testing Toolkit
 Purpose: Test username/password credentials across multiple services
-Version: 1.2 (Telnet Support Added)
+Version: 1.3 (Bug Fixes & Improvements)
 """
 
 import argparse
@@ -13,6 +13,7 @@ from typing import List, Tuple
 import shutil
 import tempfile
 import os
+import time
 
 # ANSI Color Codes
 class Colors:
@@ -42,7 +43,7 @@ PORT_PROTOCOLS = {
     5432: {'protocol': 'postgres', 'name': 'PostgreSQL'},
     5900: {'protocol': 'vnc', 'name': 'VNC'},
     5985: {'protocol': 'winrm', 'name': 'WinRM'},
-    5986: {'protocol': 'winrm', 'name': 'WinRM-HTTPS'},
+    5986: {'protocol': 'winrm-ssl', 'name': 'WinRM-HTTPS'},
     6379: {'protocol': 'redis', 'name': 'Redis'},
     27017: {'protocol': 'mongodb', 'name': 'MongoDB'},
 }
@@ -52,7 +53,7 @@ def print_banner():
     banner = f"""
 {Colors.OKCYAN}{Colors.BOLD}
 ╔═══════════════════════════════════════════════════════════╗
-║                    LOCKSMITH v1.2                         ║
+║                    LOCKSMITH v1.3                         ║
 ║          Multi-Protocol Credential Testing Tool           ║
 ╚═══════════════════════════════════════════════════════════╝
 {Colors.ENDC}"""
@@ -73,7 +74,7 @@ def check_dependencies() -> str:
                               capture_output=True, text=True, timeout=5)
         version = result.stdout.strip()
         print(f"{Colors.OKGREEN}[✓] NetExec found: {version}{Colors.ENDC}\n")
-    except:
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError):
         print(f"{Colors.OKGREEN}[✓] NetExec found{Colors.ENDC}\n")
     
     return nxc_cmd
@@ -110,27 +111,41 @@ def validate_target(target: str) -> bool:
         return False
     return True
 
+def escape_expect_string(s: str) -> str:
+    """Properly escape string for Tcl/Expect script"""
+    # Escape backslashes first, then other special chars
+    s = s.replace('\\', '\\\\')
+    s = s.replace('"', '\\"')
+    s = s.replace('[', '\\[')
+    s = s.replace(']', '\\]')
+    s = s.replace('$', '\\$')
+    s = s.replace('{', '\\{')
+    s = s.replace('}', '\\}')
+    return s
+
 def test_telnet(target: str, username: str, password: str, port: int = 23) -> Tuple[bool, str]:
     """Test Telnet authentication using expect-like interaction"""
     try:
-        # Escape special characters for expect script
-        # Tcl/Expect needs strict escaping for " \ and special vars
-        safe_username = username.replace('\\', '\\\\').replace('"', '\\"').replace('[', '\\[').replace('$', '\\$')
-        safe_password = password.replace('\\', '\\\\').replace('"', '\\"').replace('[', '\\[').replace('$', '\\$')
+        # Check if expect is available
+        if not shutil.which('expect'):
+            return False, "Error: 'expect' package not found. Install with: sudo apt install expect"
         
-        # Create telnet expect script
-        # Note: double braces {{ }} are used for f-string literal braces
+        # Properly escape special characters for expect script
+        safe_username = escape_expect_string(username)
+        safe_password = escape_expect_string(password)
+        
+        # Create telnet expect script with case-insensitive matching
         script = f"""#!/usr/bin/expect -f
 set timeout 10
 spawn telnet {target} {port}
 expect {{
-    -re "(login|Username|Login):" {{
+    -re -nocase "(login|username):" {{
         send "{safe_username}\\r"
         expect {{
-            -re "(Password|password):" {{
+            -re -nocase "password:" {{
                 send "{safe_password}\\r"
                 expect {{
-                    -re "Login incorrect|Authentication failed|Login failed" {{ exit 1 }}
+                    -re -nocase "Login incorrect|Authentication failed|Login failed|Access denied" {{ exit 1 }}
                     -re "\\\\$|#|>" {{ send "exit\\r"; exit 0 }}
                     timeout {{ exit 2 }}
                 }}
@@ -143,33 +158,33 @@ expect {{
 }}
 """
         
-        # Try with expect if available
-        if shutil.which('expect'):
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.exp', delete=False) as f:
-                f.write(script)
-                script_path = f.name
+        # Create temporary script file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.exp', delete=False) as f:
+            f.write(script)
+            script_path = f.name
+        
+        try:
+            subprocess.run(['chmod', '+x', script_path], check=True, timeout=5)
+            result = subprocess.run(['expect', script_path], 
+                                  capture_output=True, 
+                                  text=True, 
+                                  timeout=15)
             
+            if result.returncode == 0:
+                return True, "Authentication successful"
+            elif result.returncode == 1:
+                return False, "Invalid credentials"
+            elif result.returncode == 2:
+                return False, "Connection timeout"
+            else:
+                return False, f"Connection refused or closed"
+        finally:
+            # Clean up temp file
             try:
-                subprocess.run(['chmod', '+x', script_path], check=True, timeout=5)
-                result = subprocess.run(['expect', script_path], 
-                                      capture_output=True, 
-                                      text=True, 
-                                      timeout=15)
-                
-                if result.returncode == 0:
-                    return True, "Authentication successful"
-                elif result.returncode == 1:
-                    return False, "Invalid credentials"
-                elif result.returncode == 2:
-                    return False, "Connection timeout (Expect)"
-                else:
-                    return False, f"Connection refused or closed (Code: {result.returncode})"
-            finally:
                 if os.path.exists(script_path):
                     os.unlink(script_path)
-        else:
-            # Fallback if expect is not installed
-            return False, "Error: 'expect' package not found. Install with: sudo apt install expect"
+            except OSError:
+                pass
                 
     except subprocess.TimeoutExpired:
         return False, "Connection timeout"
@@ -177,7 +192,7 @@ expect {{
         return False, f"Error: {str(e)}"
 
 def test_credential(nxc_cmd: str, target: str, username: str, password: str, 
-                   port: int, protocol: str) -> Tuple[bool, str]:
+                   port: int, protocol: str, domain: str = '.', timeout: int = 20) -> Tuple[bool, str]:
     """Test a single credential against a protocol"""
     
     if protocol == 'telnet':
@@ -186,7 +201,7 @@ def test_credential(nxc_cmd: str, target: str, username: str, password: str,
     # Build command based on protocol
     cmd = []
     if protocol == 'smb':
-        cmd = [nxc_cmd, 'smb', target, '-u', username, '-p', password, '-d', '.']
+        cmd = [nxc_cmd, 'smb', target, '-u', username, '-p', password, '-d', domain]
     elif protocol == 'ssh':
         cmd = [nxc_cmd, 'ssh', target, '-u', username, '-p', password]
     elif protocol == 'ftp':
@@ -195,6 +210,8 @@ def test_credential(nxc_cmd: str, target: str, username: str, password: str,
         cmd = [nxc_cmd, 'rdp', target, '-u', username, '-p', password]
     elif protocol == 'winrm':
         cmd = [nxc_cmd, 'winrm', target, '-u', username, '-p', password]
+    elif protocol == 'winrm-ssl':
+        cmd = [nxc_cmd, 'winrm', target, '-u', username, '-p', password, '--ssl']
     elif protocol == 'mssql':
         cmd = [nxc_cmd, 'mssql', target, '-u', username, '-p', password]
     elif protocol == 'ldap':
@@ -217,8 +234,9 @@ def test_credential(nxc_cmd: str, target: str, username: str, password: str,
     # Add port specification if not default
     default_ports = {
         'smb': 445, 'ssh': 22, 'ftp': 21, 'rdp': 3389, 'winrm': 5985,
-        'mssql': 1433, 'ldap': 389, 'ldaps': 636, 'mysql': 3306,
-        'postgres': 5432, 'vnc': 5900, 'redis': 6379, 'mongodb': 27017
+        'winrm-ssl': 5986, 'mssql': 1433, 'ldap': 389, 'ldaps': 636, 
+        'mysql': 3306, 'postgres': 5432, 'vnc': 5900, 'redis': 6379, 
+        'mongodb': 27017
     }
     
     if port != default_ports.get(protocol, port):
@@ -229,7 +247,7 @@ def test_credential(nxc_cmd: str, target: str, username: str, password: str,
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=20,
+            timeout=timeout,
             text=True
         )
         
@@ -307,6 +325,8 @@ def print_test_result(port: int, protocol_name: str, success: bool, output: str,
             print(f"{Colors.WARNING}    └─ Connection error (port may be filtered/closed){Colors.ENDC}")
         elif "logon_failure" in output.lower() or "invalid credentials" in output.lower():
             print(f"{Colors.WARNING}    └─ Invalid credentials{Colors.ENDC}")
+        elif "expect" in output.lower() and "not found" in output.lower():
+            print(f"{Colors.WARNING}    └─ {output}{Colors.ENDC}")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -321,6 +341,8 @@ def main():
     parser.add_argument('-ports', '--ports', required=True, help='Comma-separated ports (e.g., 22,445,3389)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output (show NetExec output)')
     parser.add_argument('-d', '--domain', help='Domain name (for SMB/LDAP authentication)', default='.')
+    parser.add_argument('--timeout', type=int, default=20, help='Connection timeout in seconds (default: 20)')
+    parser.add_argument('--delay', type=float, default=0, help='Delay between tests in seconds (default: 0)')
     
     args = parser.parse_args()
     
@@ -345,6 +367,9 @@ def main():
     if args.domain and args.domain != '.':
         print(f"    Domain:   {Colors.OKCYAN}{args.domain}{Colors.ENDC}")
     print(f"    Ports:    {Colors.OKCYAN}{', '.join(map(str, supported_ports))}{Colors.ENDC}")
+    print(f"    Timeout:  {Colors.OKCYAN}{args.timeout}s{Colors.ENDC}")
+    if args.delay > 0:
+        print(f"    Delay:    {Colors.OKCYAN}{args.delay}s{Colors.ENDC}")
     print()
     print(f"{Colors.BOLD}[*] Starting credential tests...{Colors.ENDC}")
     print(f"{Colors.BOLD}{'=' * 60}{Colors.ENDC}\n")
@@ -353,13 +378,14 @@ def main():
     failed_ports = []
     admin_access = []
     
-    for port in supported_ports:
+    for i, port in enumerate(supported_ports):
         protocol_info = PORT_PROTOCOLS[port]
         protocol_name = protocol_info['name']
         print(f"{Colors.OKBLUE}[*] Testing Port {port} ({protocol_name})...{Colors.ENDC}")
         
         success, output = test_credential(
-            nxc_cmd, args.target, args.username, args.password, port, protocol_info['protocol']
+            nxc_cmd, args.target, args.username, args.password, port, 
+            protocol_info['protocol'], args.domain, args.timeout
         )
         
         print_test_result(port, protocol_name, success, output, args.target, args.username, args.password)
@@ -377,6 +403,10 @@ def main():
                 admin_access.append((port, protocol_name))
         else:
             failed_ports.append((port, protocol_name))
+        
+        # Add delay between tests if specified (except after last test)
+        if args.delay > 0 and i < len(supported_ports) - 1:
+            time.sleep(args.delay)
     
     print(f"{Colors.BOLD}{'=' * 60}{Colors.ENDC}")
     print(f"{Colors.BOLD}[*] Test Summary:{Colors.ENDC}\n")
