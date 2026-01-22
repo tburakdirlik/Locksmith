@@ -1,6 +1,6 @@
 # 🔐 LOCKSMITH - Multi-Protocol Credential Testing Tool
 
-LockSmith is a high-efficiency authentication testing tool designed for penetration testers to eliminate manual repetition and accelerate the transition from discovery to access. Instead of manually testing discovered credentials across various services, LockSmith automates the process by parsing Nmap scan results and instantly performing credential validation across all open attack surfaces and also it shows post exploitation commands after successfull authebtications. Acting as a powerful wrapper for NetExec (nxc), it ensures that no service is left unchecked while saving critical time during internal tests and OSCP-style exams.
+LockSmith is a high-efficiency authentication testing tool designed for penetration testers to eliminate manual repetition and accelerate the transition from discovery to access. Instead of manually testing discovered credentials across various services, LockSmith automates the process by parsing Nmap scan results and instantly performing credential validation across all open attack surfaces and also it shows post exploitation commands after successfull authentications. Acting as a powerful wrapper for NetExec (nxc), it ensures that no service is left unchecked while saving critical time during internal tests and OSCP-style exams.
 
 ## 🎯 Features
 
