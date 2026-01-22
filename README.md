@@ -1,6 +1,6 @@
 # 🔐 LOCKSMITH - Multi-Protocol Credential Testing Tool
 
-LockSmith is a high-efficiency authentication testing tool designed for penetration testers to eliminate manual repetition and accelerate the transition from discovery to access. Instead of manually testing discovered credentials across various services, LockSmith automates the process by parsing Nmap scan results and instantly performing credential validation across all open attack surfaces. Acting as a powerful wrapper for NetExec (nxc), it ensures that no service is left unchecked while saving critical time during internal assessments and OSCP-style exams.
+LockSmith is a high-efficiency authentication testing tool designed for penetration testers to eliminate manual repetition and accelerate the transition from discovery to access. Instead of manually testing discovered credentials across various services, LockSmith automates the process by parsing Nmap scan results and instantly performing credential validation across all open attack surfaces and also it shows post exploitation commands after successfull authebtications. Acting as a powerful wrapper for NetExec (nxc), it ensures that no service is left unchecked while saving critical time during internal assessments and OSCP-style exams.
 
 ## 🎯 Features
 
@@ -71,57 +71,6 @@ python3 locksmith.py -t 10.10.10.11 -u "user" -p "pass" -ports 22,445,3389
 [✗] FAILED  - Port 5985 (WinRM)
 ```
 
-## 🎯 Post-Exploitation Commands
-
-### SMB (Port 445)
-```bash
-# Enumerate shares
-nxc smb TARGET -u USER -p PASS --shares
-
-# Execute commands (if Pwn3d!)
-nxc smb TARGET -u USER -p PASS -x "whoami"
-
-# Dump SAM (if admin)
-nxc smb TARGET -u USER -p PASS --sam
-```
-
-### LDAP (Port 389)
-```bash
-# Enumerate users
-ldapsearch -x -H ldap://TARGET -D USER -w PASS -b "dc=domain,dc=com" "(objectClass=user)"
-```
-
-### RDP (Port 3389)
-```bash
-# Connect with clipboard
-xfreerdp /u:USER /p:PASS /v:TARGET /cert:ignore +clipboard
-```
-
-### WinRM (Port 5985)
-```bash
-# Interactive shell
-evil-winrm -i TARGET -u USER -p PASS
-```
-
-### SSH (Port 22)
-```bash
-# Interactive login
-ssh USER@TARGET
-```
-
-### FTP (Port 21)
-```bash
-# Download all files
-wget -m ftp://USER:PASS@TARGET
-```
-
-### MSSQL (Port 1433)
-```bash
-# Interactive connection
-impacket-mssqlclient USER:PASS@TARGET
-```
-
-## 💡 Pro Tips
 
 ### Test Multiple Targets
 ```bash
