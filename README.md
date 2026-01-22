@@ -2,15 +2,17 @@
 
 LockSmith is a high-efficiency authentication testing tool designed for penetration testers. It automates credential validation across multiple services by wrapping NetExec, saving critical time during internal tests and security assessments.
 
-## ✨ Features
+## Features
 
-- **18 different protocols** support
+- **17 different protocols** support
 - Color-coded output for easy analysis
 - Automatic port filtering
 - Admin access detection (Pwn3d!)
 - Success rate statistics
 - Domain authentication support
 - Detailed error reporting
+- Configurable timeout and delay settings
+- Verbose mode for detailed debugging
 
 ## 📋 Requirements
 
@@ -40,29 +42,35 @@ chmod +x locksmith.py
 nmap -p- -T4 192.168.1.100 --open
 
 # Then test discovered credentials
-python3 locksmith.py -t '192.168.1.100' -u 'admin' -p 'password' -ports 445,3389,5985
+python3 locksmith.py -t 192.168.1.100 -u admin -p password -ports 445,3389,5985
 ```
 
 ### Examples
 
 ```bash
 # SSH test
-./locksmith.py -t '10.10.10.11' -u 'user' -p 'password123' -ports 22
+./locksmith.py -t 10.10.10.11 -u user -p password123 -ports 22
 
 # Windows services
-./locksmith.py -t '192.168.1.100' -u 'admin' -p 'P@ssw0rd!' -ports 445,3389,5985
+./locksmith.py -t 192.168.1.100 -u admin -p 'P@ssw0rd!' -ports 445,3389,5985
 
 # Database servers
-./locksmith.py -t 'db-server' -u 'sa' -p 'SqlPass!' -ports 1433,3306,5432,27017
+./locksmith.py -t db-server -u sa -p 'SqlPass!' -ports 1433,3306,5432,27017
 
 # Telnet test
-./locksmith.py -t '10.10.10.50' -u 'admin' -p 'admin' -ports 23
+./locksmith.py -t 10.10.10.50 -u admin -p admin -ports 23
 
 # Verbose mode
-./locksmith.py -t '192.168.1.10' -u 'user' -p 'pass' -ports 445,3389 -v
+./locksmith.py -t 192.168.1.10 -u user -p pass -ports 445,3389 -v
 
 # Domain authentication
-./locksmith.py -t 'dc.contoso.local' -u 'administrator' -p 'Pass!' -ports 445,389 -d CONTOSO
+./locksmith.py -t dc.contoso.local -u administrator -p 'Pass!' -ports 445,389 -d CONTOSO
+
+# Custom timeout (useful for slow networks)
+./locksmith.py -t 10.10.10.100 -u admin -p password -ports 445,3389 --timeout 30
+
+# Add delay between tests (to avoid account lockouts)
+./locksmith.py -t 192.168.1.100 -u admin -p password -ports 22,445,3389 --delay 2
 ```
 
 ### Batch Operations
@@ -70,11 +78,11 @@ python3 locksmith.py -t '192.168.1.100' -u 'admin' -p 'password' -ports 445,3389
 ```bash
 # Multiple targets
 for ip in $(cat targets.txt); do
-    ./locksmith.py -t "$ip" -u 'admin' -p 'password' -ports 445,3389
+    ./locksmith.py -t "$ip" -u admin -p password -ports 445,3389
 done
 
 # Save results
-./locksmith.py -t '10.10.10.100' -u 'admin' -p 'pass' -ports 445 | tee results.txt
+./locksmith.py -t 10.10.10.100 -u admin -p pass -ports 445 | tee results.txt
 ```
 
 ## 📊 Output Example
@@ -88,7 +96,7 @@ done
 [✗] FAILED  - Port 3389 (RDP)
     └─ Invalid credentials
 
-═══════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════
 [*] Test Summary:
 
 ✓ SUCCESSFUL AUTHENTICATIONS:
@@ -105,10 +113,10 @@ done
 
 [+] Credentials are VALID on 1 service(s)!
 [!] ADMIN ACCESS on 1 service(s)!
-═══════════════════════════════════════════════════════════
+════════════════════════════════════════════════════════════
 ```
 
-## 🔌 Supported Protocols
+## 📌 Supported Protocols
 
 | Port | Protocol | Service |
 |------|----------|---------|
@@ -130,39 +138,43 @@ done
 | 6379 | Redis | Redis Database |
 | 27017 | MongoDB | MongoDB NoSQL |
 
-## 📝 Parameters
+## 🔧 Parameters
 
 | Parameter | Short | Description | Required | Example |
 |-----------|-------|-------------|----------|---------|
-| `--target` | `-t` | Target IP or hostname | ✅ | `'192.168.1.100'` |
-| `--username` | `-u` | Username to test | ✅ | `'admin'` |
-| `--password` | `-p` | Password to test | ✅ | `'P@ssw0rd123'` |
+| `--target` | `-t` | Target IP or hostname | ✅ | `192.168.1.100` |
+| `--username` | `-u` | Username to test | ✅ | `admin` |
+| `--password` | `-p` | Password to test | ✅ | `P@ssw0rd123` |
 | `--ports` | `-ports` | Comma-separated port list | ✅ | `22,445,3389` |
 | `--verbose` | `-v` | Show detailed output | ❌ | - |
-| `--domain` | `-d` | Domain name (for AD) | ❌ | `'CONTOSO'` |
+| `--domain` | `-d` | Domain name (for AD) | ❌ | `CONTOSO` |
+| `--timeout` | | Connection timeout (seconds) | ❌ | `30` (default: 20) |
+| `--delay` | | Delay between tests (seconds) | ❌ | `2` (default: 0) |
 
 ## 💡 Usage Tips
 
-- **Always use single quotes**: `-u 'user' -p 'password'`
-- **Special characters**: Automatically escaped
-- **Domain format**: `-u 'DOMAIN\username'` or use `-d` parameter
-- **Ports parameter**: No dashes: `-ports 22,445`
+- **Quotes for special characters**: Use quotes for passwords with special characters: `-p 'P@ssw0rd!'`
+- **Domain format**: Use `-d DOMAIN` parameter or `-u 'DOMAIN\username'`
+- **Ports parameter**: Use `-ports` (with 's'), no dashes: `-ports 22,445`
+- **Timeout**: Increase timeout for slow networks: `--timeout 30`
+- **Delay**: Add delay to avoid account lockouts: `--delay 2`
+- **Verbose mode**: Use `-v` for debugging connection issues
 
 ## 🎯 Real-World Scenarios
 
 ### Windows Domain Controller
 ```bash
-./locksmith.py -t 'dc.company.local' -u 'admin' -p 'Pass!' -ports 445,389,636,3389,5985
+./locksmith.py -t dc.company.local -u administrator -p 'Pass!' -ports 445,389,636,3389,5985 -d COMPANY
 ```
 
 ### Linux Web Server
 ```bash
-./locksmith.py -t 'web-server' -u 'webadmin' -p 'WebPass' -ports 21,22,23,3306
+./locksmith.py -t web-server -u webadmin -p 'WebPass' -ports 21,22,23,3306
 ```
 
 ### Database Server
 ```bash
-./locksmith.py -t 'db-server' -u 'sa' -p 'SqlPass' -ports 1433,3306,5432,27017
+./locksmith.py -t db-server -u sa -p 'SqlPass' -ports 1433,3306,5432,27017
 ```
 
 ### Pentest Workflow
@@ -173,10 +185,19 @@ nmap -p- -T4 --open 10.10.10.0/24 -oG ports.txt
 # 2. Extract IPs
 grep "Up" ports.txt | cut -d " " -f 2 > targets.txt
 
-# 3. Test credentials
+# 3. Test credentials with delay to avoid lockouts
 for ip in $(cat targets.txt); do
-    ./locksmith.py -t "$ip" -u 'admin' -p 'password' -ports 22,23,445,3389
+    ./locksmith.py -t "$ip" -u admin -p password -ports 22,23,445,3389 --delay 2
 done
+```
+
+### Avoiding Account Lockouts
+```bash
+# Test with 2-second delay between each service
+./locksmith.py -t 192.168.1.100 -u admin -p password -ports 22,445,3389,5985 --delay 2
+
+# For slow networks, increase timeout
+./locksmith.py -t 10.10.10.100 -u admin -p password -ports 445,3389 --timeout 30
 ```
 
 ## 🛠️ Troubleshooting
@@ -188,6 +209,8 @@ which nxc
 
 # Install
 sudo apt install netexec
+# OR
+pipx install netexec
 ```
 
 ### Permission Denied
@@ -202,6 +225,9 @@ ping 10.10.10.10
 
 # Check port
 nmap -p 445 10.10.10.10
+
+# Increase timeout
+./locksmith.py -t 10.10.10.10 -u admin -p pass -ports 445 --timeout 30
 ```
 
 ### Telnet Test Not Working
@@ -210,6 +236,13 @@ nmap -p 445 10.10.10.10
 sudo apt install expect
 ```
 
+### Verbose Debugging
+```bash
+# Use verbose mode to see detailed NetExec output
+./locksmith.py -t 10.10.10.10 -u admin -p pass -ports 445 -v
+```
+
+## ⚠️ Legal & Ethical Use
 
 ### Legal Use Cases
 - ✅ Authorized penetration testing with written permission
@@ -217,17 +250,35 @@ sudo apt install expect
 - ✅ Educational purposes in lab environments
 - ✅ OSCP/certification exam labs
 
-
 ### Account Lockout Warning
 ⚠️ **Multiple failed authentication attempts can trigger account lockouts!**
 
 - Default Windows lockout: 5 failed attempts
+- Use `--delay` parameter to add pause between tests
 - Be cautious when testing multiple credentials
 - Use `--verbose` to monitor detailed responses
+- Monitor your test attempts carefully
 
+### Best Practices
+- Always get written authorization before testing
+- Use `--delay` parameter to avoid triggering lockouts
+- Test only authorized systems
+- Document all testing activities
+- Respect rate limits and system resources
 
 ## ⚖️ Disclaimer
 
 This tool is provided for **educational and authorized testing purposes only**. The authors and contributors are not responsible for any misuse or damage caused by this tool. Unauthorized access to computer systems is illegal.
+
+---
+
+## 📝 Version History
+
+### v1.3 (Current)
+- Bug fixes and improvements
+- Enhanced Telnet authentication
+- Improved error handling
+- Better timeout management
+- Added delay between tests option
 
 ---
