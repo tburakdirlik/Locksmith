@@ -42,35 +42,35 @@ chmod +x locksmith.py
 nmap -p- -T4 192.168.1.100 --open
 
 # Then test discovered credentials
-python3 locksmith.py -t 192.168.1.100 -u admin -p password -ports 445,3389,5985
+python3 locksmith.py -t '192.168.1.100' -u 'admin' -p 'password' -ports 445,3389,5985
 ```
 
 ### Examples
 
 ```bash
 # SSH test
-./locksmith.py -t 10.10.10.11 -u user -p password123 -ports 22
+./locksmith.py -t '10.10.10.11' -u 'user' -p 'password123' -ports 22
 
 # Windows services
-./locksmith.py -t 192.168.1.100 -u admin -p 'P@ssw0rd!' -ports 445,3389,5985
+./locksmith.py -t '192.168.1.100' -u 'admin' -p 'P@ssw0rd!' -ports 445,3389,5985
 
 # Database servers
-./locksmith.py -t db-server -u sa -p 'SqlPass!' -ports 1433,3306,5432,27017
+./locksmith.py -t 'db-server' -u 'sa' -p 'SqlPass!' -ports 1433,3306,5432,27017
 
 # Telnet test
-./locksmith.py -t 10.10.10.50 -u admin -p admin -ports 23
+./locksmith.py -t '10.10.10.50' -u 'admin' -p 'admin' -ports 23
 
 # Verbose mode
-./locksmith.py -t 192.168.1.10 -u user -p pass -ports 445,3389 -v
+./locksmith.py -t '192.168.1.10' -u 'user' -p 'pass' -ports 445,3389 -v
 
 # Domain authentication
-./locksmith.py -t dc.contoso.local -u administrator -p 'Pass!' -ports 445,389 -d CONTOSO
+./locksmith.py -t 'dc.contoso.local' -u 'administrator' -p 'Pass!' -ports 445,389 -d CONTOSO
 
 # Custom timeout (useful for slow networks)
-./locksmith.py -t 10.10.10.100 -u admin -p password -ports 445,3389 --timeout 30
+./locksmith.py -t '10.10.10.100' -u 'admin' -p 'password' -ports 445,3389 --timeout 30
 
 # Add delay between tests (to avoid account lockouts)
-./locksmith.py -t 192.168.1.100 -u admin -p password -ports 22,445,3389 --delay 2
+./locksmith.py -t '192.168.1.100' -u 'admin' -p 'password' -ports 22,445,3389 --delay 2
 ```
 
 ### Batch Operations
@@ -78,11 +78,11 @@ python3 locksmith.py -t 192.168.1.100 -u admin -p password -ports 445,3389,5985
 ```bash
 # Multiple targets
 for ip in $(cat targets.txt); do
-    ./locksmith.py -t "$ip" -u admin -p password -ports 445,3389
+    ./locksmith.py -t "$ip" -u 'admin' -p 'password' -ports 445,3389
 done
 
 # Save results
-./locksmith.py -t 10.10.10.100 -u admin -p pass -ports 445 | tee results.txt
+./locksmith.py -t '10.10.10.100' -u 'admin' -p 'pass' -ports 445 | tee results.txt
 ```
 
 ## 📊 Output Example
@@ -142,9 +142,9 @@ done
 
 | Parameter | Short | Description | Required | Example |
 |-----------|-------|-------------|----------|---------|
-| `--target` | `-t` | Target IP or hostname | ✅ | `192.168.1.100` |
-| `--username` | `-u` | Username to test | ✅ | `admin` |
-| `--password` | `-p` | Password to test | ✅ | `P@ssw0rd123` |
+| `--target` | `-t` | Target IP or hostname | ✅ | `'192.168.1.100'` |
+| `--username` | `-u` | Username to test | ✅ | `'admin'` |
+| `--password` | `-p` | Password to test | ✅ | `'P@ssw0rd123'` |
 | `--ports` | `-ports` | Comma-separated port list | ✅ | `22,445,3389` |
 | `--verbose` | `-v` | Show detailed output | ❌ | - |
 | `--domain` | `-d` | Domain name (for AD) | ❌ | `CONTOSO` |
@@ -153,7 +153,8 @@ done
 
 ## 💡 Usage Tips
 
-- **Quotes for special characters**: Use quotes for passwords with special characters: `-p 'P@ssw0rd!'`
+- **ALWAYS use single quotes**: `-u 'user' -p 'password'` (This is mandatory!)
+- **Special characters**: Single quotes automatically handle special characters
 - **Domain format**: Use `-d DOMAIN` parameter or `-u 'DOMAIN\username'`
 - **Ports parameter**: Use `-ports` (with 's'), no dashes: `-ports 22,445`
 - **Timeout**: Increase timeout for slow networks: `--timeout 30`
@@ -164,17 +165,17 @@ done
 
 ### Windows Domain Controller
 ```bash
-./locksmith.py -t dc.company.local -u administrator -p 'Pass!' -ports 445,389,636,3389,5985 -d COMPANY
+./locksmith.py -t 'dc.company.local' -u 'administrator' -p 'Pass!' -ports 445,389,636,3389,5985 -d COMPANY
 ```
 
 ### Linux Web Server
 ```bash
-./locksmith.py -t web-server -u webadmin -p 'WebPass' -ports 21,22,23,3306
+./locksmith.py -t 'web-server' -u 'webadmin' -p 'WebPass' -ports 21,22,23,3306
 ```
 
 ### Database Server
 ```bash
-./locksmith.py -t db-server -u sa -p 'SqlPass' -ports 1433,3306,5432,27017
+./locksmith.py -t 'db-server' -u 'sa' -p 'SqlPass' -ports 1433,3306,5432,27017
 ```
 
 ### Pentest Workflow
@@ -187,17 +188,17 @@ grep "Up" ports.txt | cut -d " " -f 2 > targets.txt
 
 # 3. Test credentials with delay to avoid lockouts
 for ip in $(cat targets.txt); do
-    ./locksmith.py -t "$ip" -u admin -p password -ports 22,23,445,3389 --delay 2
+    ./locksmith.py -t "$ip" -u 'admin' -p 'password' -ports 22,23,445,3389 --delay 2
 done
 ```
 
 ### Avoiding Account Lockouts
 ```bash
 # Test with 2-second delay between each service
-./locksmith.py -t 192.168.1.100 -u admin -p password -ports 22,445,3389,5985 --delay 2
+./locksmith.py -t '192.168.1.100' -u 'admin' -p 'password' -ports 22,445,3389,5985 --delay 2
 
 # For slow networks, increase timeout
-./locksmith.py -t 10.10.10.100 -u admin -p password -ports 445,3389 --timeout 30
+./locksmith.py -t '10.10.10.100' -u 'admin' -p 'password' -ports 445,3389 --timeout 30
 ```
 
 ## 🛠️ Troubleshooting
@@ -227,7 +228,7 @@ ping 10.10.10.10
 nmap -p 445 10.10.10.10
 
 # Increase timeout
-./locksmith.py -t 10.10.10.10 -u admin -p pass -ports 445 --timeout 30
+./locksmith.py -t '10.10.10.10' -u 'admin' -p 'pass' -ports 445 --timeout 30
 ```
 
 ### Telnet Test Not Working
@@ -239,7 +240,7 @@ sudo apt install expect
 ### Verbose Debugging
 ```bash
 # Use verbose mode to see detailed NetExec output
-./locksmith.py -t 10.10.10.10 -u admin -p pass -ports 445 -v
+./locksmith.py -t '10.10.10.10' -u 'admin' -p 'pass' -ports 445 -v
 ```
 
 ## ⚠️ Legal & Ethical Use
@@ -259,20 +260,11 @@ sudo apt install expect
 - Use `--verbose` to monitor detailed responses
 - Monitor your test attempts carefully
 
-### Best Practices
-- Always get written authorization before testing
-- Use `--delay` parameter to avoid triggering lockouts
-- Test only authorized systems
-- Document all testing activities
-- Respect rate limits and system resources
-
 ## ⚖️ Disclaimer
 
 This tool is provided for **educational and authorized testing purposes only**. The authors and contributors are not responsible for any misuse or damage caused by this tool. Unauthorized access to computer systems is illegal.
 
 ---
-
-## 📝 Version History
 
 ### v1.3 (Current)
 - Bug fixes and improvements
