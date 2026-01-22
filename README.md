@@ -1,12 +1,11 @@
 # 🔐 LOCKSMITH - Multi-Protocol Credential Testing Tool
 
-LockSmith is a high-efficiency authentication testing tool designed for penetration testers to eliminate manual repetition and accelerate the transition from discovery to access. Instead of manually testing discovered credentials across various services, LockSmith automates the process by parsing Nmap scan results and instantly performing credential validation across all open attack surfaces and also it shows post exploitation commands after successfull authebtications. Acting as a powerful wrapper for NetExec (nxc), it ensures that no service is left unchecked while saving critical time during internal assessments and OSCP-style exams.
+LockSmith is a high-efficiency authentication testing tool designed for penetration testers to eliminate manual repetition and accelerate the transition from discovery to access. Instead of manually testing discovered credentials across various services, LockSmith automates the process by parsing Nmap scan results and instantly performing credential validation across all open attack surfaces and also it shows post exploitation commands after successfull authebtications. Acting as a powerful wrapper for NetExec (nxc), it ensures that no service is left unchecked while saving critical time during internal tests and OSCP-style exams.
 
 ## 🎯 Features
 
 - Multi-protocol support (SMB, SSH, FTP, RDP, WinRM, MSSQL, MySQL, LDAP)
 - Color-coded output for easy analysis
-- Admin access detection (Pwn3d!)
 - Automatic filtering of unsupported ports
 - Example connection commands for successful authentications
 
@@ -21,10 +20,20 @@ sudo apt install netexec
 pipx install netexec
 ```
 
+## 🛠️ Installation & Setup
+
+```bash
+git clone https://github.com/tburakdirlik/Locksmith.git
+cd locksmith
+chmod +x locksmith.py
+```
+
 ## 🚀 Usage
 
 ```bash
-# Basic usage
+# Recommended usage
+# Scan open ports with nmap then parse to locksmith
+nmap -p- -T4 192.168.1.100 --open
 python3 locksmith.py -t 10.10.10.11 -u "user" -p "pass" -ports 22,445,3389
 
 # Direct execution
@@ -32,6 +41,33 @@ python3 locksmith.py -t 10.10.10.11 -u "user" -p "pass" -ports 22,445,3389
 
 # Verbose output
 ./locksmith.py -t 192.168.1.10 -u "user" -p "pass" -ports 445,3389 -v
+
+# Test Multiple Targets
+for ip in $(cat targets.txt); do
+    ./locksmith.py -t $ip -u "admin" -p "password" -ports 445,3389
+done
+
+# Save Results
+./locksmith.py -t TARGET -u USER -p PASS -ports 445,3389 | tee results.txt
+
+```
+
+## 📊 Output Example
+
+```
+[✓] SUCCESS - Port 389 (LDAP)
+    └─ Credentials are valid!
+    └─ Example: ldapsearch -x -H ldap://192.168.243.21 -D 'Craig.Carr' -w 'Spring2023' -b 'dc=domain,dc=com'
+
+[✓] SUCCESS - Port 445 (SMB)
+    └─ Credentials are valid!
+    └─ Example: nxc smb 192.168.243.21 -u 'Craig.Carr' -p 'Spring2023' --shares
+
+[✓] SUCCESS - Port 3389 (RDP)
+    └─ Credentials are valid!
+    └─ Example: xfreerdp /u:Craig.Carr /p:Spring2023 /v:192.168.243.21 /cert:ignore
+
+[✗] FAILED  - Port 5985 (WinRM)
 ```
 
 ## 🔌 Supported Ports
@@ -52,46 +88,6 @@ python3 locksmith.py -t 10.10.10.11 -u "user" -p "pass" -ports 22,445,3389
 | 5985 | WinRM | Windows Remote Management |
 | 5986 | WinRM-HTTPS | WinRM over HTTPS |
 
-## 📊 Output Example
-
-```
-[✓] SUCCESS - Port 389 (LDAP)
-    └─ Credentials are valid!
-    └─ Example: ldapsearch -x -H ldap://192.168.243.21 -D 'Craig.Carr' -w 'Spring2023' -b 'dc=domain,dc=com'
-
-[✓] SUCCESS - Port 445 (SMB)
-    └─ Credentials are valid!
-    └─ ADMIN ACCESS DETECTED!
-    └─ Example: nxc smb 192.168.243.21 -u 'Craig.Carr' -p 'Spring2023' --shares
-
-[✓] SUCCESS - Port 3389 (RDP)
-    └─ Credentials are valid!
-    └─ Example: xfreerdp /u:Craig.Carr /p:Spring2023 /v:192.168.243.21 /cert:ignore
-
-[✗] FAILED  - Port 5985 (WinRM)
-```
-
-
-### Test Multiple Targets
-```bash
-for ip in $(cat targets.txt); do
-    ./locksmith.py -t $ip -u "admin" -p "password" -ports 445,3389
-done
-```
-
-### Save Results
-```bash
-./locksmith.py -t TARGET -u USER -p PASS -ports 445,3389 | tee results.txt
-```
-
-### Integration with Nmap
-```bash
-# Scan for open ports
-nmap -p- -T4 192.168.1.100 --open
-
-# Test discovered ports
-./locksmith.py -t 192.168.1.100 -u "admin" -p "pass" -ports 445,3389,5985
-```
 
 ## 🔍 Parameters
 
@@ -102,6 +98,7 @@ nmap -p- -T4 192.168.1.100 --open
 | `-p, --password` | Password to test | ✅ |
 | `-ports` | Comma-separated port list | ✅ |
 | `-v, --verbose` | Show detailed output | ❌ |
+
 
 ## 🐛 Troubleshooting
 
@@ -131,7 +128,6 @@ chmod +x locksmith.py
 ## 📚 Resources
 
 - [NetExec Documentation](https://www.netexec.wiki/)
-- [HackTricks](https://book.hacktricks.xyz/)
 
 ## 📸 Screenshots
 
