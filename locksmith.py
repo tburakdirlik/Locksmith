@@ -286,25 +286,25 @@ def get_example_command(port: int, protocol: str, target: str, username: str, pa
     safe_password = password.replace("'", "'\\''")
     
     commands = {
-        21: f"ftp {target}  # then login with {username}",
-        22: f"ssh {username}@{target}",
-        23: f"telnet {target}  # then login with {username}",
+        21: f"ftp {target}  # then login with '{username}'",
+        22: f"ssh '{username}'@{target}",
+        23: f"telnet {target}  # then login with '{username}'",
         88: f"nxc smb {target} -u '{username}' -p '{safe_password}' --shares",
         139: f"nxc smb {target} -u '{username}' -p '{safe_password}' --shares",
         389: f"ldapsearch -x -H ldap://{target} -D '{username}' -w '{safe_password}' -b 'dc=domain,dc=com'",
         445: f"nxc smb {target} -u '{username}' -p '{safe_password}' --shares",
         636: f"ldapsearch -x -H ldaps://{target} -D '{username}' -w '{safe_password}' -b 'dc=domain,dc=com'",
         1433: f"nxc mssql {target} -u '{username}' -p '{safe_password}' -q 'SELECT @@version'",
-        3306: f"mysql -h {target} -u {username} -p'{safe_password}'",
-        3389: f"xfreerdp /u:{username} /p:'{safe_password}' /v:{target} /cert:ignore",
-        5432: f"psql -h {target} -U {username} -d postgres",
+        3306: f"mysql -h {target} -u '{username}' -p'{safe_password}'",
+        3389: f"xfreerdp /u:'{username}' /p:'{safe_password}' /v:{target} /cert:ignore",
+        5432: f"psql -h {target} -U '{username}' -d postgres",
         5900: f"vncviewer {target}:5900  # Password: {safe_password}",
         5985: f"evil-winrm -i {target} -u '{username}' -p '{safe_password}'",
         5986: f"evil-winrm -i {target} -u '{username}' -p '{safe_password}' -S",
         6379: f"redis-cli -h {target} -a '{safe_password}'",
-        27017: f"mongosh mongodb://{username}:{safe_password}@{target}:27017",
+        27017: f"mongosh mongodb://'{username}':'{safe_password}'@{target}:27017",
     }
-    return commands.get(port, f"# Connect to {target}:{port} with {username}")
+    return commands.get(port, f"# Connect to {target}:{port} with '{username}'")
 
 def print_test_result(port: int, protocol_name: str, success: bool, output: str, 
                      target: str = "", username: str = "", password: str = ""):
@@ -331,16 +331,16 @@ def print_test_result(port: int, protocol_name: str, success: bool, output: str,
 def main():
     parser = argparse.ArgumentParser(
         description='Test credentials across multiple protocols using NetExec',
-        epilog='Example: ./locksmith.py -t 10.10.10.11 -u "admin" -p "password" -ports 22,445,3389',
+        epilog='Example: ./locksmith.py -t \'10.10.10.11\' -u \'admin\' -p \'password\' -ports 22,445,3389',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
-    parser.add_argument('-t', '--target', required=True, help='Target IP address or hostname')
-    parser.add_argument('-u', '--username', required=True, help='Username to test')
-    parser.add_argument('-p', '--password', required=True, help='Password to test')
+    parser.add_argument('-t', '--target', required=True, help="Target IP address or hostname (use quotes: '192.168.1.100')")
+    parser.add_argument('-u', '--username', required=True, help="Username to test (use quotes: 'admin')")
+    parser.add_argument('-p', '--password', required=True, help="Password to test (use quotes: 'P@ssw0rd!')")
     parser.add_argument('-ports', '--ports', required=True, help='Comma-separated ports (e.g., 22,445,3389)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output (show NetExec output)')
-    parser.add_argument('-d', '--domain', help='Domain name (for SMB/LDAP authentication)', default='.')
+    parser.add_argument('-d', '--domain', help="Domain name (for SMB/LDAP authentication, e.g., 'CONTOSO')", default='.')
     parser.add_argument('--timeout', type=int, default=20, help='Connection timeout in seconds (default: 20)')
     parser.add_argument('--delay', type=float, default=0, help='Delay between tests in seconds (default: 0)')
     
@@ -448,6 +448,8 @@ def main():
             print(f"{Colors.WARNING}{Colors.BOLD}[!] ADMIN ACCESS on {len(admin_access)} service(s)!{Colors.ENDC}")
     else:
         print(f"{Colors.FAIL}[!] Credentials failed on all tested services.{Colors.ENDC}")
+    
+    print(f"{Colors.BOLD}{'=' * 60}{Colors.ENDC}")
 
 if __name__ == '__main__':
     try:
